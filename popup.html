@@ -1,33 +1,123 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-	<meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width,initial-scale=1.0">
-	<title>DescargaSAT</title>
+var downloadData;
 
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+function HandleDownload(fileType) {
+    if (downloadData) {
+        var downloadURLs = new Array();
 
-	<script src='popup.js'></script>
-	<link rel=stylesheet href="style.css">
-</head>
-<body>
-	<div class="container text-center">
-        <h4 class="py-2">Descarga SAT</h4>
+        switch (fileType) {
+            case "pdf":
+                downloadData.records.forEach(element => {
+                    if(element.pdfDownloadLink)
+                    {
+                        let record = {
+                            "filename": element.filename,
+                            "downloadURL": element.pdfDownloadLink
+                        };
+                        downloadURLs.push(record);
+                    }
+                });
+            break;
 
-		<div class="py-2">
-			<button class="btn btn-primary btn-sm" id='downloadPDF'>
-				<span class="badge badge-light" id="countBadgePDF"></span>
-				Descargar PDF
-			</button>	
-		</div>
+            case "cancel":
+                downloadData.records.forEach(element => {
+                    if(element.cancelDownloadLink)
+                    {
+                        let record = {
+                            "filename": element.filename,
+                            "downloadURL": element.cancelDownloadLink
+                        };
+                        downloadURLs.push(record);
+                    }
+                });
+            break;
 
-        <div class="py-2">
-			<button class="btn btn-primary btn-sm" id='downloadXML'>
-				<span class="badge badge-light" id="countBadgeXML"></span>
-				Descargar XML
-			</button>	
-		</div>
-	</div>
-</body>
-</html>
+            case "xml":
+                downloadData.records.forEach(element => {
+                    if(element.xmlDownloadLink)
+                    {
+                        let record = {
+                            "filename": element.filename,
+                            "downloadURL": element.xmlDownloadLink
+                        };
+                        downloadURLs.push(record);
+                    }
+                });
+                break;
+
+            default:
+                break;
+        }
+
+        var interval = setInterval(function () {
+            var record = downloadURLs.shift();
+            if (record) {
+                chrome.downloads.download({
+                        url: record.downloadURL,
+                        filename: record.filename + (fileType == "pdf" ? ".pdf" : ".xml")
+                    },
+                    function (downloadId) {},
+                );
+            } else {
+                clearInterval(this);
+            }
+        }, 1000);
+    }
+}
+
+function GetData() {
+    return new Promise((resolve, reject) => {
+        chrome.tabs.query({
+            active: true,
+            currentWindow: true
+        }, (tabs) => {
+            chrome.tabs.sendMessage(tabs[0].id, {
+                data: "full"
+            }, (response) => {
+                if(response == "Counters mismatch")
+                {
+                    reject();
+                }
+                else
+                {
+                    downloadData = response;
+                    resolve();
+                }
+            });
+        });
+    })
+
+};
+
+window.onload = function () {
+    GetData()
+        .then(() => {
+            if(downloadData.pdfCount == 0)
+            {
+                document.getElementById("downloadPDF").setAttribute("disabled", true);
+            } else {
+                document.getElementById("downloadPDF").onclick = function () {
+                    HandleDownload("pdf")
+                };
+            }
+
+            if(downloadData.xmlCount == 0) {
+                document.getElementById("downloadXML").setAttribute("disabled", true);
+            } else {
+                document.getElementById("downloadXML").onclick = function () {
+                    HandleDownload("xml")
+                };
+            }
+
+            if(downloadData.cancelCount == 0) {
+                document.getElementById("downloadCancel").setAttribute("disabled", true);
+            } else {
+                document.getElementById("downloadCancel").onclick = function () {
+                    HandleDownload("cancel")
+                };
+            }
+            
+            document.getElementById("countBadgePDF").innerText = downloadData.pdfCount;
+            document.getElementById("countBadgeXML").innerText = downloadData.xmlCount;
+            document.getElementById("countBadgeCancel").innerText = downloadData.cancelCount;
+        })
+};
