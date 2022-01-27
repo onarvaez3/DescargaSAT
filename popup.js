@@ -2,16 +2,46 @@ var downloadData;
 
 function HandleDownload(fileType) {
     if (downloadData) {
-        var downloadURLs;
-        var fileNames = [...downloadData.fileNames];
+        var downloadURLs = new Array();
 
         switch (fileType) {
             case "pdf":
-                downloadURLs = downloadData.pdfDownloadLinks;
-                break;
+                downloadData.records.forEach(element => {
+                    if(element.pdfDownloadLink)
+                    {
+                        let record = {
+                            "filename": element.filename,
+                            "downloadURL": element.pdfDownloadLink
+                        };
+                        downloadURLs.push(record);
+                    }
+                });
+            break;
+
+            case "cancel":
+                downloadData.records.forEach(element => {
+                    if(element.cancelDownloadLink)
+                    {
+                        let record = {
+                            "filename": element.filename,
+                            "downloadURL": element.cancelDownloadLink
+                        };
+                        downloadURLs.push(record);
+                    }
+                });
+            break;
 
             case "xml":
-                downloadURLs = downloadData.xmlDownloadLinks;
+                downloadData.records.forEach(element => {
+                    if(element.xmlDownloadLink)
+                    {
+                        let record = {
+                            "filename": element.filename,
+                            "downloadURL": element.xmlDownloadLink
+                        };
+                        downloadURLs.push(record);
+                    }
+                });
                 break;
 
             default:
@@ -19,12 +49,11 @@ function HandleDownload(fileType) {
         }
 
         var interval = setInterval(function () {
-            var url = downloadURLs.shift();
-            var fileName = fileNames.shift();
-            if (url) {
+            var record = downloadURLs.shift();
+            if (record) {
                 chrome.downloads.download({
-                        url: url,
-                        filename: fileName + (fileType == "pdf" ? ".pdf" : ".xml")
+                        url: record.downloadURL,
+                        filename: record.filename + (fileType == "pdf" ? ".pdf" : ".xml")
                     },
                     function (downloadId) {},
                 );
@@ -44,8 +73,15 @@ function GetData() {
             chrome.tabs.sendMessage(tabs[0].id, {
                 data: "full"
             }, (response) => {
-                downloadData = response;
-                resolve();
+                if(response == "Counters mismatch")
+                {
+                    reject();
+                }
+                else
+                {
+                    downloadData = response;
+                    resolve();
+                }
             });
         });
     })
@@ -55,19 +91,33 @@ function GetData() {
 window.onload = function () {
     GetData()
         .then(() => {
-            if(downloadData.fileNames.length == 0) {
+            if(downloadData.pdfCount == 0)
+            {
                 document.getElementById("downloadPDF").setAttribute("disabled", true);
-                document.getElementById("downloadXML").setAttribute("disabled", true);
             } else {
                 document.getElementById("downloadPDF").onclick = function () {
                     HandleDownload("pdf")
                 };
+            }
+
+            if(downloadData.xmlCount == 0) {
+                document.getElementById("downloadXML").setAttribute("disabled", true);
+            } else {
                 document.getElementById("downloadXML").onclick = function () {
                     HandleDownload("xml")
                 };
             }
+
+            if(downloadData.cancelCount == 0) {
+                document.getElementById("downloadCancel").setAttribute("disabled", true);
+            } else {
+                document.getElementById("downloadCancel").onclick = function () {
+                    HandleDownload("cancel")
+                };
+            }
             
-            document.getElementById("countBadgePDF").innerText = downloadData.fileNames.length;
-            document.getElementById("countBadgeXML").innerText = downloadData.fileNames.length;
+            document.getElementById("countBadgePDF").innerText = downloadData.pdfCount;
+            document.getElementById("countBadgeXML").innerText = downloadData.xmlCount;
+            document.getElementById("countBadgeCancel").innerText = downloadData.cancelCount;
         })
 };
