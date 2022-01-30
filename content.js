@@ -1,9 +1,9 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log(request);
     if(request)
     {
         if(request.data == "full")
         {
+            let pageType = 0; //0=recibidas, 1=emitidas
             var result = { 
                 "records": new Array(),
                 "pdfCount": 0,
@@ -13,6 +13,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             let recordCounter = 0;
             let nameCounter = 0;
 
+            if(document.getElementById('cuerpo') && document.getElementById('cuerpo').hasChildNodes())
+            {
+                if(document.getElementById('cuerpo').firstElementChild.textContent.includes('Emitidas'))
+                {
+                    pageType = 1;
+                }
+            }
             var tableRows = document.getElementById("ctl00_MainContent_tblResult").firstElementChild.children;
             for (const tr of tableRows)
             {
@@ -97,7 +104,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     if(tds[i].textContent.match("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"))
                     {
                         var uuid = tds[i].textContent;
-                        i++;
+                        if(pageType)
+                        {
+                            i+=3;
+                        }
+                        else {
+                            i++;
+                        }
                         var rfc_emisor = tds[i].textContent;
 
                         result.records[nameCounter]["filename"] = rfc_emisor.match('[a-zA-Z]+')[0] + "-" + uuid.substring(0,8);
@@ -112,10 +125,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             } else {
                 sendResponse("Counters mismatch");
             }
-        }
-        else if(request.data = "count")
-        {
-            sendResponse(document.getElementsByName('BtnRI').length);
         }
     }
 });
