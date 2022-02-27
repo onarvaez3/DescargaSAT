@@ -8,7 +8,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 "records": new Array(),
                 "pdfCount": 0,
                 "xmlCount": 0,
-                "cancelCount": 0
+                "cancelCount": 0,
+                "allCount": 0,
+                "zipFileName": ""
             };
             let recordCounter = 0;
             let nameCounter = 0;
@@ -97,6 +99,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             };
 
             var tds = document.getElementById("ContenedorDinamico").getElementsByTagName('td');
+            var j = 0;
             for(var i = 0; i<tds.length;i++)
             {
                 if(tds[i].hasAttribute("style") && tds[i].attributes["style"].value == "WORD-BREAK:BREAK-ALL;") 
@@ -106,14 +109,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         var uuid = tds[i].textContent;
                         if(pageType)
                         {
+                            j = i+1;
                             i+=3;
                         }
                         else {
                             i++;
+                            j = i+2;
                         }
-                        var rfc_emisor = tds[i].textContent;
+                        var rfc_emisor = tds[i].textContent.match('[a-zA-Z]+')[0];
+                        result.records[nameCounter]["filename"] = rfc_emisor + "-" + uuid.substring(0,8);
 
-                        result.records[nameCounter]["filename"] = rfc_emisor.match('[a-zA-Z]+')[0] + "-" + uuid.substring(0,8);
+                        if(result.zipFileName.length == 0)
+                        {
+                            var rfc_receptor = tds[j].textContent.match('[a-zA-Z]+')[0];
+                            result.zipFileName = rfc_receptor + (pageType == 1 ? "_emitidas_" : "_recibidas_");
+                        }
+                        
                         nameCounter++;
                     }
                 }
@@ -121,9 +132,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
             if(recordCounter == nameCounter)
             {
+                result.allCount = result.pdfCount + result.cancelCount + result.xmlCount;
                 sendResponse(result);
             } else {
-                sendResponse("Counters mismatch");
+                sendResponse(null);
             }
         }
     }

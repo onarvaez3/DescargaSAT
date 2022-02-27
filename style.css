@@ -4,3 +4,34 @@ html{
 body{
     box-shadow: rgba(0, 0, 0, 0.3) 0px 19px 38px, rgba(0, 0, 0, 0.22) 0px 15px 12px;
 }
+
+.btn-l-rad
+{
+    border-top-left-radius: 0.2rem;
+    border-bottom-left-radius: 0.2rem;
+    border-top-right-radius: 0rem;
+    border-bottom-right-radius: 0rem;
+}
+
+.btn-r-rad
+{
+    position: absolute;
+    border-top-left-radius: 0rem;
+    border-bottom-left-radius: 0rem;
+    border-top-right-radius: 0.2rem;
+    border-bottom-right-radius: 0.2rem;
+}
+
+.noborder
+{
+    border: none;
+}
+
+.dropdown-menu 
+{
+    position: absolute; 
+    inset: 0px auto auto 0px; 
+    margin: 0px; 
+    transform: translate(127px, 8px) !important;
+    min-width: 3rem !important;
+}
