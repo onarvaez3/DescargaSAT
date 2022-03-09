@@ -4,11 +4,9 @@ function HandleDownload(fileType, downloadOption = "individual") {
     if (downloadData) {
         var downloadURLs = new Array();
 
-        if(fileType == "all" || fileType == "pdf")
-        {
+        if (fileType == "all" || fileType == "pdf") {
             downloadData.records.forEach(element => {
-                if(element.pdfDownloadLink)
-                {
+                if (element.pdfDownloadLink) {
                     let record = {
                         "filename": element.filename,
                         "downloadURL": element.pdfDownloadLink,
@@ -19,11 +17,9 @@ function HandleDownload(fileType, downloadOption = "individual") {
             });
         }
 
-        if(fileType == "all" || fileType == "cancel")
-        {
+        if (fileType == "all" || fileType == "cancel") {
             downloadData.records.forEach(element => {
-                if(element.cancelDownloadLink)
-                {
+                if (element.cancelDownloadLink) {
                     let record = {
                         "filename": element.filename,
                         "downloadURL": element.cancelDownloadLink,
@@ -34,11 +30,9 @@ function HandleDownload(fileType, downloadOption = "individual") {
             });
         }
 
-        if(fileType == "all" || fileType == "xml")
-        {
+        if (fileType == "all" || fileType == "xml") {
             downloadData.records.forEach(element => {
-                if(element.xmlDownloadLink)
-                {
+                if (element.xmlDownloadLink) {
                     let record = {
                         "filename": element.filename,
                         "downloadURL": element.xmlDownloadLink,
@@ -49,20 +43,18 @@ function HandleDownload(fileType, downloadOption = "individual") {
             });
         }
 
-        if(fileType == "all" || downloadOption == "zip")
-        {
-            DownloadGroup(downloadURLs).then(downloadGrp => ExportZip(downloadGrp, downloadData.zipFileName));
-        } 
-        else
-        {
+        if (fileType == "all" || downloadOption == "zip") {
+            DownloadGroup(downloadURLs).then(downloadGrp => ExportZip(downloadURLs, downloadData.zipFileName));
+        }
+        else {
             var interval = setInterval(function () {
                 var record = downloadURLs.shift();
                 if (record) {
                     chrome.downloads.download({
-                            url: record.downloadURL,
-                            filename: record.filename + (fileType == "pdf" ? ".pdf" : ".xml")
-                        },
-                        function (downloadId) {},
+                        url: record.downloadURL,
+                        filename: record.filename + (fileType == "pdf" ? ".pdf" : ".xml")
+                    },
+                        function (downloadId) { },
                     );
                 } else {
                     clearInterval(this);
@@ -72,42 +64,62 @@ function HandleDownload(fileType, downloadOption = "individual") {
     }
 }
 
-function GetBlob(downloadRecord)
-{
-    downloadRecord["blob"] = fetch(downloadRecord.downloadURL).then(resp => resp.blob());
-    return downloadRecord;
+function GetBlob(downloadRecord, retry = 0) {
+    return fetch(downloadRecord.downloadURL).then(resp => (resp.blob().then(blob => {
+        if (blob.size < 2000) {
+            if (retry < 5) {
+                delay(500).then(() => GetBlob(downloadRecord, retry++));
+            } else {
+                console.warn("Failed to obtain file from: " + downloadRecord.downloadURL);
+            }
+        } else {
+            downloadRecord.blob = blob;
+        }
+    })));
 }
 
-function DownloadGroup(downloadRecords, filesPerGroup = 5)
-{
+function DownloadGroup(downloadRecords, filesPerGroup = 2) {
+    ix = 0;
     return Promise.map(
         downloadRecords,
         async record => {
+            SetProgress(ix++);
             return await GetBlob(record);
         },
-        {concurrency: filesPerGroup}
+        { concurrency: filesPerGroup }
     )
 }
 
-function ExportZip(downloadRecords, zipFileName)
-{
+function delay(time) {
+    return new Promise(resolve => setTimeout(resolve, time));
+}
+
+function ExportZip(downloadRecords, zipFileName) {
     const zip = new JSZip();
     downloadRecords.forEach(record => {
         zip.file(record.filename + (record.fileType == "pdf" ? ".pdf" : ".xml"), record.blob)
     });
 
-    zip.generateAsync({type: 'blob'}).then(zipFile => {
+    zip.generateAsync({ type: 'blob' }).then(zipFile => {
         var url = URL.createObjectURL(zipFile);
-        var today = new Date();
         chrome.downloads.download({
             url: url,
-            filename: zipFileName + new Date().toJSON().slice(0,10) + ".zip"
+            filename: zipFileName + new Date().toJSON().slice(0, 10) + ".zip"
         });
     });
 
-    downloadRecords.forEach(record => {
-        console.log(record["filename"]);
-    })
+    SetProgress(-1);
+}
+
+function SetProgress(progress) {
+    if (progress == -1) {
+        document.getElementById("spanProgress").innerText = "";
+        document.getElementById("divProgress").style.display = "none";
+    }
+    else {
+        document.getElementById("divProgress").style.display = "inline";
+        document.getElementById("spanProgress").innerText = "Descargando (" + progress + ")";
+    }
 }
 
 function GetData() {
@@ -119,12 +131,10 @@ function GetData() {
             chrome.tabs.sendMessage(tabs[0].id, {
                 data: "full"
             }, (response) => {
-                if(response == null)
-                {
+                if (response == null) {
                     reject();
                 }
-                else
-                {
+                else {
                     downloadData = response;
                     resolve();
                 }
@@ -137,55 +147,54 @@ function GetData() {
 window.onload = function () {
     GetData()
         .then(() => {
-            if(downloadData.pdfCount == 0)
-                {
-                    document.getElementById("downloadPDF").setAttribute("disabled", true);
-                    document.getElementById("btnDropDownPdf").setAttribute("disabled", true);
-                } else {
-                    document.getElementById("downloadPDF").onclick = function () {
-                        HandleDownload("pdf")
-                    };
-                    document.getElementById("btnDownloadZipPdf").onclick = function () {
-                        HandleDownload("pdf", "zip")
-                    };
-                }
+            if (downloadData.pdfCount == 0) {
+                document.getElementById("downloadPDF").setAttribute("disabled", true);
+                document.getElementById("btnDropDownPdf").setAttribute("disabled", true);
+            } else {
+                document.getElementById("downloadPDF").onclick = function () {
+                    HandleDownload("pdf")
+                };
+                document.getElementById("btnDownloadZipPdf").onclick = function () {
+                    HandleDownload("pdf", "zip")
+                };
+            }
 
-                if(downloadData.xmlCount == 0) {
-                    document.getElementById("downloadXML").setAttribute("disabled", true);
-                    document.getElementById("btnDropDownXml").setAttribute("disabled", true);
-                } else {
-                    document.getElementById("downloadXML").onclick = function () {
-                        HandleDownload("xml")
-                    };
-                    document.getElementById("btnDownloadZipXml").onclick = function () {
-                        HandleDownload("xml", "zip")
-                    };
-                }
+            if (downloadData.xmlCount == 0) {
+                document.getElementById("downloadXML").setAttribute("disabled", true);
+                document.getElementById("btnDropDownXml").setAttribute("disabled", true);
+            } else {
+                document.getElementById("downloadXML").onclick = function () {
+                    HandleDownload("xml")
+                };
+                document.getElementById("btnDownloadZipXml").onclick = function () {
+                    HandleDownload("xml", "zip")
+                };
+            }
 
-                if(downloadData.cancelCount == 0) {
-                    document.getElementById("downloadCancel").setAttribute("disabled", true);
-                    document.getElementById("btnDropDownCancel").setAttribute("disabled", true);
-                } else {
-                    document.getElementById("downloadCancel").onclick = function () {
-                        HandleDownload("cancel")
-                    };
-                    document.getElementById("btnDownloadZipCancel").onclick = function () {
-                        HandleDownload("cancel", "zip")
-                    };
-                }
+            if (downloadData.cancelCount == 0) {
+                document.getElementById("downloadCancel").setAttribute("disabled", true);
+                document.getElementById("btnDropDownCancel").setAttribute("disabled", true);
+            } else {
+                document.getElementById("downloadCancel").onclick = function () {
+                    HandleDownload("cancel")
+                };
+                document.getElementById("btnDownloadZipCancel").onclick = function () {
+                    HandleDownload("cancel", "zip")
+                };
+            }
 
-                if(downloadData.allCount == 0) {
-                    document.getElementById("downloadAll").setAttribute("disabled", true);
-                } else {
-                    document.getElementById("downloadAll").onclick = function () {
-                        HandleDownload("all")
-                    };
-                }
-                
-                document.getElementById("countBadgePDF").innerText = downloadData.pdfCount;
-                document.getElementById("countBadgeXML").innerText = downloadData.xmlCount;
-                document.getElementById("countBadgeCancel").innerText = downloadData.cancelCount;
-                document.getElementById("countBadgeAll").innerText = downloadData.allCount;
+            if (downloadData.allCount == 0) {
+                document.getElementById("downloadAll").setAttribute("disabled", true);
+            } else {
+                document.getElementById("downloadAll").onclick = function () {
+                    HandleDownload("all")
+                };
+            }
+
+            document.getElementById("countBadgePDF").innerText = downloadData.pdfCount;
+            document.getElementById("countBadgeXML").innerText = downloadData.xmlCount;
+            document.getElementById("countBadgeCancel").innerText = downloadData.cancelCount;
+            document.getElementById("countBadgeAll").innerText = downloadData.allCount;
         }, () => {
             document.getElementById("downloadPDF").setAttribute("disabled", true);
             document.getElementById("btnDropDownPdf").setAttribute("disabled", true);
