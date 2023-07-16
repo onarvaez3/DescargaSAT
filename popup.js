@@ -12,7 +12,10 @@ function HandleDownload(fileType, downloadOption = "individual") {
                         "downloadURL": element.pdfDownloadLink,
                         "fileType": "pdf"
                     };
-                    downloadURLs.push(record);
+                    if(downloadOption == "noNomina" && element.efecto != "Nómina")
+                    {
+                        downloadURLs.push(record);
+                    }
                 }
             });
         }
@@ -38,7 +41,10 @@ function HandleDownload(fileType, downloadOption = "individual") {
                         "downloadURL": element.xmlDownloadLink,
                         "fileType": "xml"
                     };
-                    downloadURLs.push(record);
+                    if(downloadOption == "noNomina" && element.efecto != "Nómina")
+                    {
+                        downloadURLs.push(record);
+                    }
                 }
             });
         }
@@ -154,6 +160,9 @@ window.onload = function () {
                 document.getElementById("downloadPDF").onclick = function () {
                     HandleDownload("pdf")
                 };
+                document.getElementById("downloadPDFNoNomina").onclick = function () {
+                    HandleDownload("pdf", "noNomina")
+                };
                 document.getElementById("btnDownloadZipPdf").onclick = function () {
                     HandleDownload("pdf", "zip")
                 };
@@ -165,6 +174,9 @@ window.onload = function () {
             } else {
                 document.getElementById("downloadXML").onclick = function () {
                     HandleDownload("xml")
+                };
+                document.getElementById("downloadXMLNoNomina").onclick = function () {
+                    HandleDownload("xml", "noNomina")
                 };
                 document.getElementById("btnDownloadZipXml").onclick = function () {
                     HandleDownload("xml", "zip")
@@ -193,6 +205,8 @@ window.onload = function () {
 
             document.getElementById("countBadgePDF").innerText = downloadData.pdfCount;
             document.getElementById("countBadgeXML").innerText = downloadData.xmlCount;
+            document.getElementById("countBadgePDFNoNomina").innerText = downloadData.pdfCount - downloadData.nominaCount;
+            document.getElementById("countBadgeXMLNoNomina").innerText = downloadData.xmlCount - downloadData.nominaCount;
             document.getElementById("countBadgeCancel").innerText = downloadData.cancelCount;
             document.getElementById("countBadgeAll").innerText = downloadData.allCount;
         }, () => {
