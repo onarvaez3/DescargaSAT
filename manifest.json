@@ -1,6 +1,6 @@
 {
     "name": "DescargaSAT",
-    "version": "0.9.0",
+    "version": "1.1.0",
     "manifest_version": 3,
     "description": "Facilita la descarga de CFDIs (pdf y xml) desde el SAT.",
     "icons": {
