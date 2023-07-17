@@ -12,7 +12,7 @@ function HandleDownload(fileType, downloadOption = "individual") {
                         "downloadURL": element.pdfDownloadLink,
                         "fileType": "pdf"
                     };
-                    if(downloadOption == "noNomina" && element.efecto != "Nómina")
+                    if(downloadOption != "noNomina" || (downloadOption == "noNomina" && element.efecto != "Nómina"))
                     {
                         downloadURLs.push(record);
                     }
@@ -41,7 +41,7 @@ function HandleDownload(fileType, downloadOption = "individual") {
                         "downloadURL": element.xmlDownloadLink,
                         "fileType": "xml"
                     };
-                    if(downloadOption == "noNomina" && element.efecto != "Nómina")
+                    if(downloadOption != "noNomina" || (downloadOption == "noNomina" && element.efecto != "Nómina"))
                     {
                         downloadURLs.push(record);
                     }
