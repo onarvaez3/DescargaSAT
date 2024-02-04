@@ -53,6 +53,7 @@ function HandleDownload(fileType, downloadOption = "individual") {
             DownloadGroup(downloadURLs).then(downloadGrp => ExportZip(downloadURLs, downloadData.zipFileName));
         }
         else {
+            let ix = 0;
             var interval = setInterval(function () {
                 var record = downloadURLs.shift();
                 if (record) {
@@ -60,10 +61,13 @@ function HandleDownload(fileType, downloadOption = "individual") {
                         url: record.downloadURL,
                         filename: record.filename + (fileType == "pdf" ? ".pdf" : ".xml")
                     },
-                        function (downloadId) { },
+                        function (downloadId) { 
+                            SetProgress(ix++);
+                        },
                     );
                 } else {
                     clearInterval(this);
+                    SetProgress(-1);
                 }
             }, 500);
         }
